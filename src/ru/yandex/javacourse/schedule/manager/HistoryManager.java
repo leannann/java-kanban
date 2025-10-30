@@ -10,7 +10,10 @@ import ru.yandex.javacourse.schedule.tasks.Task;
  * @author Andrey Terzi (terzi.andrey.sergeevich@gmail.com)
  */
 public interface HistoryManager {
+
 	void add(Task task);
+
 	void remove(int id);
+
 	List<Task> getHistory();
 }
