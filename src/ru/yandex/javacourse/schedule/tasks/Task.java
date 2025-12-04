@@ -53,6 +53,10 @@ public class Task {
 		this.description = description;
 	}
 
+	public TaskType getType() {
+		return TaskType.TASK;
+	}
+
 	@Override
 	public int hashCode() {
 		return Objects.hash(id);
