@@ -1,6 +1,8 @@
 package ru.yandex.javacourse.schedule.manager;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import ru.yandex.javacourse.schedule.exceptions.ManagerSaveException;
 import ru.yandex.javacourse.schedule.tasks.Epic;
 import ru.yandex.javacourse.schedule.tasks.Subtask;
 import ru.yandex.javacourse.schedule.tasks.Task;
@@ -8,10 +10,13 @@ import ru.yandex.javacourse.schedule.tasks.TaskStatus;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class FileBackedTaskManagerTest {
+public class FileBackedTaskManagerTest extends TaskManagerTest<TaskManager> {
 
     private File createTempFile() throws IOException {
         File file = File.createTempFile("tasks", ".csv");
@@ -19,15 +24,75 @@ public class FileBackedTaskManagerTest {
         return file;
     }
 
+    @Override
+    protected TaskManager createManager() {
+        try {
+            return new FileBackedTaskManager(createTempFile());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Test
-    public void shouldLoadEmptyManagerFromEmptyFile() throws IOException {
+    @DisplayName("загрузить пустой файл")
+    void shouldLoadEmptyManagerFromEmptyFile() throws IOException {
         File file = createTempFile();
 
-        FileBackedTaskManager manager = FileBackedTaskManager.loadFromFile(file);
+        assertDoesNotThrow(() -> FileBackedTaskManager.loadFromFile(file));
+        TaskManager loaded = FileBackedTaskManager.loadFromFile(file);
 
-        assertTrue(manager.getTasks().isEmpty(), "ожидаем отсутствие задач");
-        assertTrue(manager.getEpics().isEmpty(), "ожидаем отсутствие эпиков");
-        assertTrue(manager.getSubtasks().isEmpty(), "ожидаем отсутствие подзадач");
+        assertTrue(loaded.getTasks().isEmpty());
+        assertTrue(loaded.getEpics().isEmpty());
+        assertTrue(loaded.getSubtasks().isEmpty());
+        assertTrue(loaded.getHistory().isEmpty());
+    }
+
+    @Test
+    @DisplayName("сохранить и загрузить несколько задач")
+    void shouldSaveAndLoadSeveralTasks() throws IOException {
+        File file = createTempFile();
+        FileBackedTaskManager manager = new FileBackedTaskManager(file);
+
+        Task t1 = new Task("T1", "d", TaskStatus.NEW);
+        t1.setDuration(Duration.ofMinutes(15));
+        t1.setStartTime(LocalDateTime.of(2025, 1, 1, 9, 0));
+
+        Task t2 = new Task("T2", "d", TaskStatus.DONE);
+        t2.setDuration(Duration.ofMinutes(30));
+        t2.setStartTime(LocalDateTime.of(2025, 1, 1, 10, 0));
+
+        int id1 = manager.addNewTask(t1);
+        int id2 = manager.addNewTask(t2);
+
+        TaskManager loaded = FileBackedTaskManager.loadFromFile(file);
+
+        assertEquals(2, loaded.getTasks().size());
+
+        Optional<Task> task1 = loaded.getTask(id1);
+        Optional<Task> task2 = loaded.getTask(id2);
+
+        assertTrue(task1.isPresent(), "задача T1 должна быть найдена");
+        assertTrue(task2.isPresent(), "задача T2 должна быть найдена");
+
+        assertEquals("T1", task1.get().getName());
+        assertEquals("T2", task2.get().getName());
+        assertEquals(Duration.ofMinutes(15), task1.get().getDuration());
+        assertEquals(LocalDateTime.of(2025, 1, 1, 10, 0), task2.get().getStartTime());
+    }
+
+
+    @Test
+    @DisplayName("ошибка сохранения должна оборачиваться в ManagerSaveException")
+    void saveShouldWrapIOException() {
+        // Пытаемся записать в "папку" как в файл -> обычно даёт IOException
+        File dir = new File(System.getProperty("java.io.tmpdir"), "tm_dir_" + System.nanoTime());
+        assertTrue(dir.mkdir());
+        dir.deleteOnExit();
+
+        FileBackedTaskManager manager = new FileBackedTaskManager(dir);
+        Task t = new Task("T", "d", TaskStatus.NEW);
+
+        assertThrows(ManagerSaveException.class, () -> manager.addNewTask(t));
     }
 
     @Test
@@ -41,12 +106,15 @@ public class FileBackedTaskManagerTest {
         FileBackedTaskManager loaded = FileBackedTaskManager.loadFromFile(file);
 
         assertEquals(1, loaded.getTasks().size(), "должна загрузиться одна задача");
-        Task loadedTask = loaded.getTask(id);
-        assertNotNull(loadedTask, "задача должна быть найдена по id");
+        Optional<Task> loadedTaskOptional = loaded.getTask(id);
+        assertTrue(loadedTaskOptional.isPresent(), "задача должна быть найдена по id");
+
+        Task loadedTask = loadedTaskOptional.get();
         assertEquals("Test task", loadedTask.getName());
         assertEquals("Description", loadedTask.getDescription());
         assertEquals(TaskStatus.NEW, loadedTask.getStatus());
     }
+
 
     @Test
     public void shouldSaveAndLoadMultipleTasksEpicsAndSubtasks() throws IOException {
@@ -72,17 +140,17 @@ public class FileBackedTaskManagerTest {
         assertEquals(1, loaded.getEpics().size(), "должен загрузиться один эпик");
         assertEquals(2, loaded.getSubtasks().size(), "должны загрузиться две подзадачи");
 
-        Task loadedTask1 = loaded.getTask(taskId1);
+        Task loadedTask1 = loaded.getTask(taskId1).orElse(null);
         assertNotNull(loadedTask1);
         assertEquals("Task 1", loadedTask1.getName());
         assertEquals(TaskStatus.NEW, loadedTask1.getStatus());
 
-        Epic loadedEpic = loaded.getEpic(epicId);
+        Epic loadedEpic = loaded.getEpic(epicId).orElse(null);
         assertNotNull(loadedEpic);
         assertEquals("Epic 1", loadedEpic.getName());
 
-        Subtask loadedSubtask1 = loaded.getSubtask(subtaskId1);
-        Subtask loadedSubtask2 = loaded.getSubtask(subtaskId2);
+        Subtask loadedSubtask1 = loaded.getSubtask(subtaskId1).orElse(null);
+        Subtask loadedSubtask2 = loaded.getSubtask(subtaskId2).orElse(null);
 
         assertNotNull(loadedSubtask1);
         assertNotNull(loadedSubtask2);
@@ -95,6 +163,7 @@ public class FileBackedTaskManagerTest {
         assertEquals(TaskStatus.DONE, loadedSubtask2.getStatus());
         assertEquals(epicId, loadedSubtask2.getEpicId(), "у подзадачи должен сохраниться epicId");
     }
+
 
     public static void main(String[] args) {
         File storageFile = new File("tasks.csv");

@@ -4,6 +4,8 @@ import static ru.yandex.javacourse.schedule.tasks.TaskStatus.NEW;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 public class Epic extends Task {
 
@@ -40,6 +42,19 @@ public class Epic extends Task {
 		return TaskType.EPIC;
 	}
 
+	private LocalDateTime endTime;
+
+	@Override
+	public LocalDateTime getEndTime() {
+		return endTime;
+	}
+
+	public void setCalculatedFields(Duration duration, LocalDateTime startTime, LocalDateTime endTime) {
+		this.duration = duration;
+		this.startTime = startTime;
+		this.endTime = endTime;
+	}
+
 	@Override
 	public String toString() {
 		return "Epic{" +
@@ -47,6 +62,9 @@ public class Epic extends Task {
 				", name='" + name + '\'' +
 				", status=" + status +
 				", description='" + description + '\'' +
+				", duration=" + (duration != null ? duration.toMinutes() + "min" : "null") +
+				", startTime=" + startTime +
+				", endTime=" + getEndTime() +
 				", subtaskIds=" + subtaskIds +
 				'}';
 	}

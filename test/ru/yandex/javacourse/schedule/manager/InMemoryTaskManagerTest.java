@@ -5,10 +5,16 @@ import org.junit.jupiter.api.Test;
 import ru.yandex.javacourse.schedule.tasks.Task;
 import ru.yandex.javacourse.schedule.tasks.TaskStatus;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import java.util.Optional;
 
-public class InMemoryTaskManagerTest {
+import static org.junit.jupiter.api.Assertions.*;
+
+public class InMemoryTaskManagerTest extends TaskManagerTest<TaskManager> {
+
+    @Override
+    protected TaskManager createManager() {
+        return Managers.getDefault();
+    }
 
     TaskManager manager;
 
@@ -24,16 +30,18 @@ public class InMemoryTaskManagerTest {
 
         assertEquals(1, manager.getTasks().size(), "task should be added");
 
-        Task addedTask = manager.getTasks().get(0);
+        Task addedTask = manager.getTasks().getFirst();
         assertEquals(id, addedTask.getId());
         assertEquals("Test 1", addedTask.getName());
         assertEquals("Testing task 1", addedTask.getDescription());
         assertEquals(TaskStatus.NEW, addedTask.getStatus());
 
-        Task byIdTask = manager.getTask(id);
-        assertEquals(id, byIdTask.getId());
-        assertEquals("Test 1", byIdTask.getName());
+        Optional<Task> byIdTask = manager.getTask(id);
+        assertTrue(byIdTask.isPresent(), "task should be retrievable by id");
+        assertEquals(id, byIdTask.get().getId());
+        assertEquals("Test 1", byIdTask.get().getName());
     }
+
 
     @Test
     public void testAddTaskWithId(){
@@ -41,14 +49,14 @@ public class InMemoryTaskManagerTest {
         int returnedId = manager.addNewTask(task);
 
         assertEquals(1, manager.getTasks().size(), "task should be added");
-        Task addedTask = manager.getTasks().get(0);
+        Task addedTask = manager.getTasks().getFirst();
         assertEquals(task, addedTask, "predefined task should be stored");
         assertEquals(42, returnedId, "returned id should equal predefined id");
         assertEquals(42, task.getId(), "predefined id should be kept");
     }
 
     @Test
-    public void testAddTaskWithAndWithoutId(){
+    public void testAddTaskWithAndWithoutId() {
         Task task0 = new Task("Test 1", "Testing task 1", TaskStatus.NEW);
         int id0 = manager.addNewTask(task0);
         assertEquals(1, id0);
@@ -58,13 +66,17 @@ public class InMemoryTaskManagerTest {
         assertEquals(1, id1);
 
         assertEquals(1, manager.getTasks().size(), "should be a single record with id=1 after update strategy");
-        Task stored = manager.getTask(1);
-        assertNotNull(stored, "task with id=1 must exist");
+
+        Optional<Task> storedOpt = manager.getTask(1);
+        assertTrue(storedOpt.isPresent(), "task with id=1 must exist");
+
+        Task stored = storedOpt.get();
         assertEquals("Test 2", stored.getName(), "record with id=1 should be updated to second task");
 
         assertEquals(1, id0, "first returned id should be 1");
         assertEquals(1, id1, "second returned id should be 1 as well");
     }
+
 
     @Test
     public void checkTaskNotChangedAfterAddTask() {
@@ -76,12 +88,15 @@ public class InMemoryTaskManagerTest {
         Task task1before = new Task(id, name, description, status);
         manager.addNewTask(task1before);
 
-        Task task1after = manager.getTask(task1before.getId());
-        assertNotNull(task1after, "task should be found by id");
+        Optional<Task> taskOpt = manager.getTask(task1before.getId());
+        assertTrue(taskOpt.isPresent(), "task should be found by id");
+
+        Task task1after = taskOpt.get();
         assertEquals(id, task1after.getId());
         assertEquals(description, task1after.getDescription());
         assertEquals(status, task1after.getStatus());
         assertEquals(name, task1after.getName());
     }
+
 }
 

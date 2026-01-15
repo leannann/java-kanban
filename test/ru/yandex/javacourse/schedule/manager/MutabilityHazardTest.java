@@ -27,9 +27,10 @@ public class MutabilityHazardTest {
 
         t.setId(10);
 
-        assertNull(manager.getTask(10), "по новому id во внешнем объекте задача не найдётся");
-        assertNotNull(manager.getTask(id), "по старому id задача найдётся (хранится копия в менеджере)");
+        assertTrue(manager.getTask(10).isEmpty(), "по новому id во внешнем объекте задача не найдётся");
+        assertTrue(manager.getTask(id).isPresent(), "по старому id задача найдётся (хранится копия в менеджере)");
     }
+
 
     @Test
     void changingSubtaskStatus_updatesEpicStatus() {
@@ -37,33 +38,33 @@ public class MutabilityHazardTest {
         Integer s1 = manager.addNewSubtask(new Subtask("S1", "d1", TaskStatus.NEW, epicId));
         Integer s2 = manager.addNewSubtask(new Subtask("S2", "d2", TaskStatus.NEW, epicId));
 
-        assertEquals(TaskStatus.NEW, manager.getEpic(epicId).getStatus(), "все NEW -> эпик NEW");
+        assertEquals(TaskStatus.NEW, manager.getEpic(epicId).orElseThrow().getStatus(), "все NEW -> эпик NEW");
 
-        Subtask st1 = manager.getSubtask(s1);
+        Subtask st1 = manager.getSubtask(s1).orElseThrow();
         st1.setStatus(TaskStatus.DONE);
         manager.updateSubtask(st1);
 
-        assertEquals(TaskStatus.IN_PROGRESS, manager.getEpic(epicId).getStatus(), "смешанные -> IN_PROGRESS");
+        assertEquals(TaskStatus.IN_PROGRESS, manager.getEpic(epicId).orElseThrow().getStatus(), "смешанные -> IN_PROGRESS");
 
-        Subtask st2 = manager.getSubtask(s2);
+        Subtask st2 = manager.getSubtask(s2).orElseThrow();
         st2.setStatus(TaskStatus.DONE);
         manager.updateSubtask(st2);
 
-        assertEquals(TaskStatus.DONE, manager.getEpic(epicId).getStatus(), "все DONE -> эпик DONE");
+        assertEquals(TaskStatus.DONE, manager.getEpic(epicId).orElseThrow().getStatus(), "все DONE -> эпик DONE");
     }
-
     @Test
     void reassigningSubtaskToAnotherEpic_viaManager_updatesLinks() {
         int e1 = manager.addNewEpic(new Epic("E1", "d"));
         int e2 = manager.addNewEpic(new Epic("E2", "d"));
 
         Integer s = manager.addNewSubtask(new Subtask("S", "d", TaskStatus.NEW, e1));
-        assertTrue(manager.getEpic(e1).getSubtaskIds().contains(s));
+        assertTrue(manager.getEpic(e1).orElseThrow().getSubtaskIds().contains(s));
 
         Subtask updated = new Subtask(s, "S", "d", TaskStatus.NEW, e2);
         manager.addNewSubtask(updated);
 
-        assertFalse(manager.getEpic(e1).getSubtaskIds().contains(s), "из старого эпика id должен быть удалён");
-        assertTrue(manager.getEpic(e2).getSubtaskIds().contains(s), "в новый эпик id должен быть добавлен");
+        assertFalse(manager.getEpic(e1).orElseThrow().getSubtaskIds().contains(s), "из старого эпика id должен быть удалён");
+        assertTrue(manager.getEpic(e2).orElseThrow().getSubtaskIds().contains(s), "в новый эпик id должен быть добавлен");
     }
+
 }
