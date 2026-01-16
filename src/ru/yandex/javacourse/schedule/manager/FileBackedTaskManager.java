@@ -1,5 +1,6 @@
 package ru.yandex.javacourse.schedule.manager;
 
+import ru.yandex.javacourse.schedule.exceptions.ManagerSaveException;
 import ru.yandex.javacourse.schedule.tasks.Epic;
 import ru.yandex.javacourse.schedule.tasks.Subtask;
 import ru.yandex.javacourse.schedule.tasks.Task;
@@ -12,6 +13,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 /**
  * File-backed task manager.
@@ -28,7 +31,7 @@ public class FileBackedTaskManager extends InMemoryTaskManager implements TaskMa
 
     protected void save() {
         try (BufferedWriter writer = Files.newBufferedWriter(storageFile.toPath(), StandardCharsets.UTF_8)) {
-            writer.write("id,type,name,status,description,epic");
+            writer.write("id,type,name,status,description,epic,duration,startTime");
             writer.newLine();
 
             for (Task task : getTasks()) {
@@ -64,28 +67,56 @@ public class FileBackedTaskManager extends InMemoryTaskManager implements TaskMa
             Subtask sub = (Subtask) task;
             sb.append(sub.getEpicId());
         }
+        sb.append(",");
+
+        if (task.getDuration() != null) {
+            sb.append(task.getDuration().toMinutes());
+        }
+        sb.append(",");
+
+        if (task.getStartTime() != null) {
+            sb.append(task.getStartTime());
+        }
 
         return sb.toString();
     }
 
+
     private static Task taskFromString(String value) {
         String[] fields = value.split(",", -1);
+
         int id = Integer.parseInt(fields[0]);
         TaskType type = TaskType.valueOf(fields[1]);
         String name = fields[2];
         TaskStatus status = TaskStatus.valueOf(fields[3]);
         String description = fields[4];
-        String epicField = fields.length > 5 ? fields[5] : "";
 
-        return switch (type) {
-            case TASK -> new Task(id, name, description, status);
-            case EPIC -> new Epic(id, name, description);
+        String epicField = fields.length > 5 ? fields[5] : "";
+        String durationField = fields.length > 6 ? fields[6] : "";
+        String startTimeField = fields.length > 7 ? fields[7] : "";
+
+        Task task;
+        switch (type) {
+            case TASK -> task = new Task(id, name, description, status);
+            case EPIC -> task = new Epic(id, name, description);
             case SUBTASK -> {
                 int epicId = Integer.parseInt(epicField);
-                yield new Subtask(id, name, description, status, epicId);
+                task = new Subtask(id, name, description, status, epicId);
             }
-        };
+            default -> throw new IllegalArgumentException("Unknown task type: " + type);
+        }
+
+        if (!durationField.isBlank()) {
+            task.setDuration(Duration.ofMinutes(Long.parseLong(durationField)));
+        }
+
+        if (!startTimeField.isBlank()) {
+            task.setStartTime(LocalDateTime.parse(startTimeField));
+        }
+
+        return task;
     }
+
 
     public static FileBackedTaskManager loadFromFile(File storageFile) {
         FileBackedTaskManager manager = new FileBackedTaskManager(storageFile);

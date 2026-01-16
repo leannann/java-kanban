@@ -33,12 +33,19 @@ public class TaskManagerDataIntegrityTest {
         assertEquals(3, manager.getHistory().size());
 
         manager.deleteSubtask(s1);
-        assertNull(manager.getSubtask(s1));
-        assertEquals(List.of(epicId, s2), manager.getHistory().stream().map(Task::getId).toList());
+        assertTrue(manager.getSubtask(s1).isEmpty(), "удалённая подзадача должна отсутствовать");
 
-        List<Integer> ids = manager.getEpic(epicId).getSubtaskIds();
+        List<Integer> historyIds = manager.getHistory().stream()
+                .map(Task::getId)
+                .toList();
+        assertEquals(List.of(epicId, s2), historyIds);
+
+        List<Integer> ids = manager.getEpic(epicId)
+                .orElseThrow()
+                .getSubtaskIds();
         assertFalse(ids.contains(s1), "в эпике не должен оставаться id удалённой сабтаски");
     }
+
 
     @Test
     void deleteEpic_removesAllItsSubtasks_andHistoryClean() {
@@ -53,12 +60,13 @@ public class TaskManagerDataIntegrityTest {
 
         manager.deleteEpic(epicId);
 
-        assertNull(manager.getEpic(epicId));
-        assertNull(manager.getSubtask(s1));
-        assertNull(manager.getSubtask(s2));
+        assertTrue(manager.getEpic(epicId).isEmpty(), "эпик должен быть удалён");
+        assertTrue(manager.getSubtask(s1).isEmpty(), "первая подзадача должна быть удалена");
+        assertTrue(manager.getSubtask(s2).isEmpty(), "вторая подзадача должна быть удалена");
 
         assertTrue(manager.getHistory().isEmpty(), "удаление эпика должно убрать его и сабтаски из истории");
     }
+
 
     @Test
     void deleteSubtasks_bulk_removesIdsFromAllEpics() {
@@ -76,12 +84,12 @@ public class TaskManagerDataIntegrityTest {
 
         manager.deleteSubtasks();
 
-        assertTrue(manager.getHistory().isEmpty());
+        assertTrue(manager.getHistory().isEmpty(), "история должна быть очищена");
 
-        assertTrue(manager.getEpic(e1).getSubtaskIds().isEmpty());
-        assertTrue(manager.getEpic(e2).getSubtaskIds().isEmpty());
-
+        assertTrue(manager.getEpic(e1).orElseThrow().getSubtaskIds().isEmpty(), "у первого эпика не должно остаться подзадач");
+        assertTrue(manager.getEpic(e2).orElseThrow().getSubtaskIds().isEmpty(), "у второго эпика не должно остаться подзадач");
     }
+
 
     @Test
     void epicSubtasksGetter_neverReturnsNull() {
