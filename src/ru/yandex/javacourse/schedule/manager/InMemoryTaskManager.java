@@ -19,36 +19,30 @@ public class InMemoryTaskManager implements TaskManager {
 
 	private final HistoryManager historyManager = Managers.getDefaultHistory();
 
-	private static final int INTERVALS_PER_YEAR = 365 * 24 * 4;
-	private final boolean[] occupiedIntervals = new boolean[INTERVALS_PER_YEAR];
+
 	private static final LocalDateTime BASE_TIME = LocalDateTime.of(2025, 1, 1, 0, 0);
+	private static final int MINUTES_IN_YEAR = 365 * 24 * 60;
+	private final BitSet occupiedMinutes = new BitSet(MINUTES_IN_YEAR);
 
 
-	private int toIntervalIndex(LocalDateTime time) {
-		return (int) Duration.between(BASE_TIME, time).toMinutes() / 15;
+	private int toMinuteIndex(LocalDateTime time) {
+		return (int) Duration.between(BASE_TIME, time).toMinutes();
 	}
 
 
 	private boolean isIntervalFree(Task task) {
 		if (task.getStartTime() == null || task.getEndTime() == null) return true;
-		int start = toIntervalIndex(task.getStartTime());
-		int end = toIntervalIndex(task.getEndTime());
-		for (int i = start; i < end; i++) {
-			if (i >= 0 && i < occupiedIntervals.length && occupiedIntervals[i]) return false;
-		}
-		return true;
+		int start = toMinuteIndex(task.getStartTime());
+		int end = toMinuteIndex(task.getEndTime());
+		return occupiedMinutes.nextSetBit(start) >= end || occupiedMinutes.nextSetBit(start) == -1;
 	}
 
 
-	private void markIntervals(Task task, boolean isOccupied) {
+	private void markIntervals(Task task, boolean occupy) {
 		if (task.getStartTime() == null || task.getEndTime() == null) return;
-		int start = toIntervalIndex(task.getStartTime());
-		int end = toIntervalIndex(task.getEndTime());
-		for (int i = start; i < end; i++) {
-			if (i >= 0 && i < occupiedIntervals.length) {
-				occupiedIntervals[i] = isOccupied;
-			}
-		}
+		int start = toMinuteIndex(task.getStartTime());
+		int end = toMinuteIndex(task.getEndTime());
+		occupiedMinutes.set(start, end, occupy);
 	}
 
 	private Task copyTask(Task t) {
@@ -456,27 +450,8 @@ public class InMemoryTaskManager implements TaskManager {
 		return new ArrayList<>(prioritizedTasks);
 	}
 
-	private boolean isOverlapping(Task a, Task b) {
-		if (a == null || b == null) return false;
-
-		if (a.getStartTime() == null || a.getEndTime() == null) return false;
-		if (b.getStartTime() == null || b.getEndTime() == null) return false;
-
-		return a.getStartTime().isBefore(b.getEndTime())
-				&& b.getStartTime().isBefore(a.getEndTime());
-	}
-
-	private boolean hasIntersections(Task candidate) {
-		if (candidate == null) return false;
-		if (candidate.getStartTime() == null || candidate.getEndTime() == null) return false;
-
-		return prioritizedTasks.stream()
-				.filter(t -> t.getId() != candidate.getId())
-				.anyMatch(t -> isOverlapping(candidate, t));
-	}
-
 	private void validateNoIntersections(Task candidate) {
-		if (hasIntersections(candidate)) {
+		if (!isIntervalFree(candidate)) {
 			throw new ManagerValidateException("Задача пересекается по времени с уже существующей: id=" + candidate.getId());
 		}
 	}
