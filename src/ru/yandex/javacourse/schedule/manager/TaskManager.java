@@ -13,32 +13,46 @@ import ru.yandex.javacourse.schedule.tasks.Task;
  * @author Vladimir Ivanov (ivanov.vladimir.l@gmail.com)
  */
 public interface TaskManager {
-	List<Task> getTasks();
-	List<Subtask> getSubtasks();
-	List<Epic> getEpics();
-	List<Subtask> getEpicSubtasks(int epicId);
+    List<Task> getTasks();
 
-	Optional<Task> getTask(int id);
-	Optional<Subtask> getSubtask(int id);
-	Optional<Epic> getEpic(int id);
+    List<Subtask> getSubtasks();
 
-	int addNewTask(Task task);
-	int addNewEpic(Epic epic);
-	Integer addNewSubtask(Subtask subtask);
+    List<Epic> getEpics();
 
-	void updateTask(Task task);
-	void updateEpic(Epic epic);
-	void updateSubtask(Subtask subtask);
+    List<Subtask> getEpicSubtasks(int epicId);
 
-	void deleteTask(int id);
-	void deleteEpic(int id);
-	void deleteSubtask(int id);
+    Optional<Task> getTask(int id);
 
-	void deleteTasks();
-	void deleteSubtasks();
-	void deleteEpics();
+    Optional<Subtask> getSubtask(int id);
 
-	List<Task> getHistory();
-	List<Task> getPrioritizedTasks();
+    Optional<Epic> getEpic(int id);
+
+    int addNewTask(Task task);
+
+    int addNewEpic(Epic epic);
+
+    Integer addNewSubtask(Subtask subtask);
+
+    void updateTask(Task task);
+
+    void updateEpic(Epic epic);
+
+    void updateSubtask(Subtask subtask);
+
+    void deleteTask(int id);
+
+    void deleteEpic(int id);
+
+    void deleteSubtask(int id);
+
+    void deleteTasks();
+
+    void deleteSubtasks();
+
+    void deleteEpics();
+
+    List<Task> getHistory();
+
+    List<Task> getPrioritizedTasks();
 
 }
