@@ -44,37 +44,31 @@ public class InMemoryTaskManagerTest extends TaskManagerTest<TaskManager> {
 
 
     @Test
-    public void testAddTaskWithId(){
+    public void testAddTaskWithId() {
         Task task = new Task(42, "Test 1", "Testing task 1", TaskStatus.NEW);
         int returnedId = manager.addNewTask(task);
 
         assertEquals(1, manager.getTasks().size(), "task should be added");
         Task addedTask = manager.getTasks().getFirst();
-        assertEquals(task, addedTask, "predefined task should be stored");
-        assertEquals(42, returnedId, "returned id should equal predefined id");
-        assertEquals(42, task.getId(), "predefined id should be kept");
+
+        assertEquals("Test 1", addedTask.getName());
+        assertEquals("Testing task 1", addedTask.getDescription());
+        assertEquals(TaskStatus.NEW, addedTask.getStatus());
+        assertNotEquals(42, returnedId, "менеджер не должен сохранять внешний id");
+        assertNotEquals(42, addedTask.getId(), "менеджер сам генерирует id");
     }
 
     @Test
     public void testAddTaskWithAndWithoutId() {
         Task task0 = new Task("Test 1", "Testing task 1", TaskStatus.NEW);
         int id0 = manager.addNewTask(task0);
-        assertEquals(1, id0);
 
         Task task1 = new Task(1, "Test 2", "Testing task 2", TaskStatus.NEW);
         int id1 = manager.addNewTask(task1);
-        assertEquals(1, id1);
 
-        assertEquals(1, manager.getTasks().size(), "should be a single record with id=1 after update strategy");
-
-        Optional<Task> storedOpt = manager.getTask(1);
-        assertTrue(storedOpt.isPresent(), "task with id=1 must exist");
-
-        Task stored = storedOpt.get();
-        assertEquals("Test 2", stored.getName(), "record with id=1 should be updated to second task");
-
-        assertEquals(1, id0, "first returned id should be 1");
-        assertEquals(1, id1, "second returned id should be 1 as well");
+        assertEquals(2, manager.getTasks().size(), "должны быть две разные задачи");
+        assertEquals(1, task1.getId(), "внешний id остался прежним");
+        assertNotEquals(1, id1, "менеджер должен выдать новый уникальный id");
     }
 
 

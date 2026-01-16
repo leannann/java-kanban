@@ -175,51 +175,22 @@ public class InMemoryTaskManager implements TaskManager {
 	@Override
 	public int addNewTask(Task task) {
 		if (task == null) return -1;
-		int id = task.getId();
-		if (id <= 0) {
-			id = ++generatorId;
-			Task copy = copyTask(task);
-			copy.setId(id);
-			validateNoIntersections(copy);
-			tasks.put(id, copy);
-			addToPrioritized(copy);
-			return id;
-		}
-		Task old = tasks.get(id);
+		int id = ++generatorId;
 		Task copy = copyTask(task);
-
+		copy.setId(id);
 		validateNoIntersections(copy);
-
-		if (old != null) {
-			removeFromPrioritized(old);
-		}
-
 		tasks.put(id, copy);
 		addToPrioritized(copy);
-
-		if (id > generatorId) {
-			generatorId = id;
-		}
 		return id;
 	}
 
 	@Override
 	public int addNewEpic(Epic epic) {
 		if (epic == null) return -1;
-		int id = epic.getId();
-		if (id <= 0) {
-			id = ++generatorId;
-			Epic copy = copyEpic(epic);
-			copy.setId(id);
-			epics.put(id, copy);
-			return id;
-		}
-		if (epics.containsKey(id)) {
-			epics.put(id, copyEpic(epic));
-		} else {
-			epics.put(id, copyEpic(epic));
-			if (id > generatorId) generatorId = id;
-		}
+		int id = ++generatorId;
+		Epic copy = copyEpic(epic);
+		copy.setId(id);
+		epics.put(id, copy);
 		return id;
 	}
 
@@ -233,32 +204,24 @@ public class InMemoryTaskManager implements TaskManager {
 
 		int id = subtask.getId();
 
-		if (id <= 0) {
+		if (id <= 0 || !subtasks.containsKey(id)) {
 			id = ++generatorId;
-
 			Subtask copy = copySubtask(subtask);
 			copy.setId(id);
 
 			validateNoIntersections(copy);
-
 			subtasks.put(id, copy);
 			addToPrioritized(copy);
-
 			targetEpic.addSubtaskId(id);
 			updateEpicStatus(targetEpicId);
-
 			return id;
 		}
 
 		Subtask prev = subtasks.get(id);
-		Subtask copy = copySubtask(subtask);
-
-		validateNoIntersections(copy);
-
 		if (prev != null) {
 			removeFromPrioritized(prev);
-
 			int prevEpicId = prev.getEpicId();
+
 			if (prevEpicId != targetEpicId) {
 				Epic prevEpic = epics.get(prevEpicId);
 				if (prevEpic != null) {
@@ -267,21 +230,16 @@ public class InMemoryTaskManager implements TaskManager {
 				}
 				targetEpic.addSubtaskId(id);
 			}
-		} else {
-			targetEpic.addSubtaskId(id);
 		}
 
+		Subtask copy = copySubtask(subtask);
 		subtasks.put(id, copy);
+		validateNoIntersections(copy);
 		addToPrioritized(copy);
-
-		if (id > generatorId) {
-			generatorId = id;
-		}
-
 		updateEpicStatus(targetEpicId);
+
 		return id;
 	}
-
 
 	@Override
 	public void updateTask(Task task) {
